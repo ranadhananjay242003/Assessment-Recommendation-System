@@ -1,0 +1,28 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+.venv/
+venv/
+ENV/
+env/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Data files (too large for git, will be generated during build)
+*.npy
+*.xlsx
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+
