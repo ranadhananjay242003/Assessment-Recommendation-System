@@ -1,96 +1,72 @@
+// app.js
+
+// Define the backend URL at the top
 const backendUrl = "https://assessment-recommendation-system-vg9h.onrender.com";
 
-// Your fetch call should look like this now
-fetch(${backendUrl}/recommend, {
-    method: 'POST',
-    headers: {
-        'Content-Type': 'application/json',
-    },
-    body: JSON.stringify({ query: yourQueryVariable })
-});
+// Get references to your HTML elements
+const queryInput = document.getElementById("query"); // Your text input field
+const searchButton = document.getElementById("go");   // Your search button
+const resultsContainer = document.getElementById("results"); // A div where results will be displayed
 
-const qEl = document.getElementById("query");
-const btn = document.getElementById("go");
-const statusEl = document.getElementById("status");
-const resultsEl = document.getElementById("results");
+// Add an event listener to the search button
+searchButton.addEventListener("click", async () => {
+    // 1. Get the current text from the input box when the button is clicked.
+    const userQuery = queryInput.value;
 
-async function recommend() {
-  const q = qEl.value.trim();
-  if (!q) {
-    statusEl.textContent = "Enter a query.";
-    return;
-  }
-  btn.disabled = true;
-  statusEl.textContent = "Requesting recommendations...";
-  resultsEl.innerHTML = "";
-  try {
-    const resp = await fetch(`${API_URL}/recommend`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ query: q, top_k: 10 }),
-    });
-    if (!resp.ok) {
-      const err = await resp.json().catch(() => ({}));
-      throw new Error(err.detail || `HTTP ${resp.status}`);
+    // Optional: Basic validation to make sure the query isn't empty.
+    if (!userQuery.trim()) {
+        alert("Please enter a search query.");
+        return;
     }
-    const data = await resp.json();
-    const assessments = data.recommended_assessments || [];
-    statusEl.textContent = `Got ${assessments.length} results.`;
     
-    // Create table
-    const table = document.createElement("table");
-    table.className = "results-table";
-    
-    // Create header
-    const thead = document.createElement("thead");
-    const headerRow = document.createElement("tr");
-    const headers = ["#", "Assessment Name", "URL"];
-    headers.forEach(h => {
-      const th = document.createElement("th");
-      th.textContent = h;
-      headerRow.appendChild(th);
-    });
-    thead.appendChild(headerRow);
-    table.appendChild(thead);
-    
-    // Create body
-    const tbody = document.createElement("tbody");
-    assessments.forEach((item, index) => {
-      const tr = document.createElement("tr");
-      
-      // Index column
-      const tdIndex = document.createElement("td");
-      tdIndex.textContent = index + 1;
-      tr.appendChild(tdIndex);
-      
-      // Assessment name column
-      const tdName = document.createElement("td");
-      tdName.textContent = item.name || "(No name)";
-      tr.appendChild(tdName);
-      
-      // URL column
-      const tdUrl = document.createElement("td");
-      const a = document.createElement("a");
-      a.href = item.url || "#";
-      a.target = "_blank";
-      a.rel = "noopener";
-      a.textContent = "View Assessment";
-      tdUrl.appendChild(a);
-      tr.appendChild(tdUrl);
-      
-      tbody.appendChild(tr);
-    });
-    table.appendChild(tbody);
-    resultsEl.appendChild(table);
-  } catch (e) {
-    statusEl.textContent = `Error: ${e.message}`;
-  } finally {
-    btn.disabled = false;
-  }
-}
+    // Show a "loading..." message
+    resultsContainer.innerHTML = "<p>Searching for recommendations...</p>";
 
-btn.addEventListener("click", recommend);
-qEl.addEventListener("keydown", (e) => {
-  if (e.key === "Enter") recommend();
+    try {
+        // 2. Use the 'userQuery' variable in the body of your request.
+        // This is where you replace the placeholder.
+        const response = await fetch(`${backendUrl}/recommend`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({ query: userQuery }) // Using the real user query here
+        });
+
+        if (!response.ok) {
+            const errorData = await response.json();
+            throw new Error(errorData.detail || "An error occurred on the server.");
+        }
+
+        const data = await response.json();
+        displayResults(data.recommended_assessments);
+
+    } catch (error) {
+        console.error("Failed to fetch:", error);
+        resultsContainer.innerHTML = <p style="color: red;">Error: ${error.message}</p>;
+    }
 });
 
+// A function to render the results on the page
+function displayResults(assessments) {
+    if (!assessments || assessments.length === 0) {
+        resultsContainer.innerHTML = "<p>No recommendations found for your query.</p>";
+        return;
+    }
+
+    resultsContainer.innerHTML = ""; // Clear the "loading..." message
+
+    assessments.forEach(assessment => {
+        const assessmentCard = document.createElement('div');
+        assessmentCard.className = 'assessment-card'; // Add a class for styling in your style.css
+        
+        assessmentCard.innerHTML = `
+            <h2><a href="${assessment.url}" target="_blank">${assessment.name}</a></h2>
+            <p>${assessment.description}</p>
+            <p><strong>Duration:</strong> ${assessment.duration} minutes</p>
+            <p><strong>Test Type:</strong> ${assessment.test_type.join(', ')}</p>
+        `;
+        
+        resultsContainer.appendChild(assessmentCard);
+  });
+}
