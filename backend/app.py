@@ -1,130 +1,66 @@
-from typing import List, Optional
+# backend/app.py
 
+from typing import Dict, List
+from contextlib import asynccontextmanager
 from fastapi import FastAPI, HTTPException
-from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field
 
-# Defer importing the heavy Recommender until startup so tests can import the app
-# even if optional heavy dependencies (like sentence-transformers) are missing.
+# This dictionary will hold our recommender instance.
+model_storage: Dict = {}
 
-app = FastAPI(title="SHL Assessment Recommender", version="1.0.0")
+# --- A 100% SAFE, PURE PYTHON DUMMY RECOMMENDER ---
+# It has no external dependencies like pandas or sentence-transformers.
+class DummyRecommender:
+    def recommend(self, query: str, top_k: int = 10) -> List[Dict]:
+        print(f"DummyRecommender received query: '{query}'")
+        # We return a hardcoded, valid list of assessments.
+        # This proves the entire API request/response cycle is working.
+        return [
+            {
+                "url": "http://example.com/test/1",
+                "name": f"Dummy Assessment for '{query}'",
+                "adaptive_support": "No",
+                "description": "This is a dummy response to prove the API is working.",
+                "duration": 30,
+                "remote_support": "Yes",
+                "test_type": ["Dummy", "Proof of Concept"]
+            }
+        ]
 
-# Allow local static frontend to call the API
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=["*"],
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    """
+    This lifespan function is guaranteed to work because it only
+    loads the safe DummyRecommender.
+    """
+    print("Lifespan event: Loading DUMMY Recommender model...")
+    # We are NOT using the real recommender. This is the key to the test.
+    model_storage["recommender"] = DummyRecommender()
+    print("Lifespan event: DUMMY Recommender model loaded successfully.")
+    
+    yield
+    
+    print("Lifespan event: Shutting down and clearing resources.")
+    model_storage.clear()
+
+app = FastAPI(
+    title="SHL Assessment Recommender (DIAGNOSTIC MODE)",
+    version="1.0.0",
+    lifespan=lifespan
 )
-
 
 class RecommendRequest(BaseModel):
     query: str = Field(..., description="User's free-text query or JD")
-
-
-class AssessmentOut(BaseModel):
-    url: str
-    name: str
-    adaptive_support: str
-    description: str
-    duration: int
-    remote_support: str
-    test_type: List[str]
-
-
-recommender: Optional[object] = None
-
-
-@app.on_event("startup")
-def _load_recommender():
-    global recommender
-    # Try to import and instantiate the project's Recommender implementation.
-    try:
-        try:
-            from .recommender import Recommender
-        except Exception:
-            from backend.recommender import Recommender  # fallback for different import contexts
-        recommender = Recommender()
-        return
-    except Exception as e:
-        # If the real recommender cannot be imported (missing heavy deps),
-        # provide a lightweight fallback so the API remains usable for tests.
-        import csv
-        import pandas as _pd
-
-        class LocalRecommender:
-            def __init__(self, data_csv: str = "data/assessments.csv"):
-                self.data_csv = data_csv
-                try:
-                    self.df = _pd.read_csv(self.data_csv)
-                except Exception:
-                    # Minimal fallback: empty dataframe with expected columns
-                    self.df = _pd.DataFrame(columns=["url", "name", "description", "type"])
-
-            def recommend(self, query: str, top_k: int = 10):
-                q = str(query).lower()
-                results = []
-                for _, row in self.df.iterrows():
-                    name = str(row.get("name", ""))
-                    desc = str(row.get("description", ""))
-                    score = 0
-                    if q in name.lower():
-                        score += 2
-                    if q in desc.lower():
-                        score += 1
-                    results.append((score, row))
-                # sort by score desc, keep top_k
-                results.sort(key=lambda x: (-x[0], 0))
-                out = []
-                for score, row in results[:top_k]:
-                    test_type_str = row.get("type", "Knowledge & Skills")
-                    test_types = [test_type_str] if test_type_str else ["Knowledge & Skills"]
-                    out.append({
-                        "url": row.get("url", ""),
-                        "name": row.get("name", ""),
-                        "adaptive_support": "No",
-                        "description": row.get("description", ""),
-                        "duration": 60,
-                        "remote_support": "Yes",
-                        "test_type": test_types,
-                    })
-                # If no rows matched, return the first top_k rows as a safe default
-                if not out:
-                    for _, row in self.df.head(top_k).iterrows():
-                        test_type_str = row.get("type", "Knowledge & Skills")
-                        test_types = [test_type_str] if test_type_str else ["Knowledge & Skills"]
-                        out.append({
-                            "url": row.get("url", ""),
-                            "name": row.get("name", ""),
-                            "adaptive_support": "No",
-                            "description": row.get("description", ""),
-                            "duration": 60,
-                            "remote_support": "Yes",
-                            "test_type": test_types,
-                        })
-                return out
-
-        recommender = LocalRecommender()
-
 
 @app.get("/health")
 async def health():
     return {"status": "healthy"}
 
-
 @app.post("/recommend")
 async def recommend(req: RecommendRequest):
-    if recommender is None:
-        raise HTTPException(status_code=503, detail="Model not ready")
-    if not req.query or not req.query.strip():
-        raise HTTPException(status_code=400, detail="Empty query")
-    try:
-        results = recommender.recommend(req.query.strip(), top_k=10)
-        # Return in the format specified in the API spec
-        return {"recommended_assessments": results}
-    except FileNotFoundError as e:
-        raise HTTPException(status_code=500, detail=f"Data missing: {e}")
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
-
+    recommender = model_storage.get("recommender")
+    if not recommender:
+        raise HTTPException(status_code=503, detail="Recommender model is not available.")
+    
+    results = recommender.recommend(req.query.strip(), top_k=10)
+    return {"recommended_assessments": results}

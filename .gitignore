@@ -26,3 +26,15 @@ Thumbs.db
 # Logs
 *.log
 
+# Ignore the Python virtual environment folder
+mvenv/
+.venv/
+
+# Ignore Python cache files
+_pycache_/
+*.pyc
+
+# Ignore IDE/editor-specific folders
+.vscode/
+.idea/
+
