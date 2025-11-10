@@ -41,7 +41,7 @@ app = FastAPI(
 # This is the "guest list" of allowed frontends.
 # We are telling our backend that it's okay to accept calls from your Vercel app.
 origins = [
-    "https://jj-dc6hxjqp4-dhananjay-ranas-projects-13d585b8.vercel.app",
+    "https://jj-ntb81j33y-dhananjay-ranas-projects-13d585b8.vercel.app",
     "http://localhost:3000",
     "http://127.0.0.1:5500" 
 ]
