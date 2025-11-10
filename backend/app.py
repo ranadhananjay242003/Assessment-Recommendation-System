@@ -1,53 +1,60 @@
 # backend/app.py
 
-from typing import Dict, List
+from typing import Dict
 from contextlib import asynccontextmanager
 from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel, Field
+from fastapi.middleware.cors import CORSMiddleware
 
-# This dictionary will hold our recommender instance.
+# This dictionary will safely hold our model instance after it's loaded.
 model_storage: Dict = {}
-
-# --- A 100% SAFE, PURE PYTHON DUMMY RECOMMENDER ---
-# It has no external dependencies like pandas or sentence-transformers.
-class DummyRecommender:
-    def recommend(self, query: str, top_k: int = 10) -> List[Dict]:
-        print(f"DummyRecommender received query: '{query}'")
-        # We return a hardcoded, valid list of assessments.
-        # This proves the entire API request/response cycle is working.
-        return [
-            {
-                "url": "http://example.com/test/1",
-                "name": f"Dummy Assessment for '{query}'",
-                "adaptive_support": "No",
-                "description": "This is a dummy response to prove the API is working.",
-                "duration": 30,
-                "remote_support": "Yes",
-                "test_type": ["Dummy", "Proof of Concept"]
-            }
-        ]
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     """
-    This lifespan function is guaranteed to work because it only
-    loads the safe DummyRecommender.
+    This function handles the application's startup.
+    It loads the REAL recommender model when the app starts.
     """
-    print("Lifespan event: Loading DUMMY Recommender model...")
-    # We are NOT using the real recommender. This is the key to the test.
-    model_storage["recommender"] = DummyRecommender()
-    print("Lifespan event: DUMMY Recommender model loaded successfully.")
+    print("Lifespan event: Loading REAL Recommender model...")
+    try:
+        from backend.recommender import Recommender
+        model_storage["recommender"] = Recommender()
+        print("Lifespan event: REAL Recommender model loaded successfully.")
+    except Exception as e:
+        import traceback
+        print("--- LIFESPAN ERROR: FAILED TO LOAD RECOMMENDER ---")
+        traceback.print_exc()
+        print("-------------------------------------------------")
     
-    yield
+    yield  # The application is now running.
     
     print("Lifespan event: Shutting down and clearing resources.")
     model_storage.clear()
 
 app = FastAPI(
-    title="SHL Assessment Recommender (DIAGNOSTIC MODE)",
+    title="SHL Assessment Recommender",
     version="1.0.0",
     lifespan=lifespan
 )
+
+# --- START OF THE CORS FIX ---
+# This is the "guest list" of allowed frontends.
+# We are telling our backend that it's okay to accept calls from your Vercel app.
+origins = [
+    "https://jj-dc6hxjqp4-dhananjay-ranas-projects-13d585b8.vercel.app",
+    "http://localhost:3000",
+    "http://127.0.0.1:5500" 
+]
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=origins, # Use our specific guest list
+    allow_credentials=True,
+    allow_methods=["GET", "POST"], # Only allow the methods you need
+    allow_headers=["*"],
+)
+# --- END OF THE CORS FIX ---
+
 
 class RecommendRequest(BaseModel):
     query: str = Field(..., description="User's free-text query or JD")
@@ -60,7 +67,7 @@ async def health():
 async def recommend(req: RecommendRequest):
     recommender = model_storage.get("recommender")
     if not recommender:
-        raise HTTPException(status_code=503, detail="Recommender model is not available.")
+        raise HTTPException(status_code=503, detail="Recommender model is not available or failed to load.")
     
     results = recommender.recommend(req.query.strip(), top_k=10)
     return {"recommended_assessments": results}
