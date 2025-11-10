@@ -1,4 +1,13 @@
-const API_URL = "http://localhost:8000";
+const backendUrl = "https://assessment-recommendation-system-vg9h.onrender.com";
+
+// Your fetch call should look like this now
+fetch(${backendUrl}/recommend, {
+    method: 'POST',
+    headers: {
+        'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({ query: yourQueryVariable })
+});
 
 const qEl = document.getElementById("query");
 const btn = document.getElementById("go");
