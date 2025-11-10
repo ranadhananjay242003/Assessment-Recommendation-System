@@ -1,20 +1,14 @@
-#!/bin/bash
-set -e
+#!/usr/bin/env bash
+# exit on error
+set -o errexit
 
-echo "Installing dependencies..."
-pip install --upgrade pip
+# 1. Install all the Python dependencies from requirements.txt
+echo "--- Installing dependencies ---"
 pip install -r requirements.txt
 
-echo "Checking for data files..."
-if [ ! -f "data/assessments.csv" ]; then
-    echo "Running scraper to collect assessment data..."
-    python scraper/scrape_shl.py
-fi
+# 2. (Optional but Recommended) Run the script that builds the embeddings
+# This pre-builds the .npy file so your app starts faster.
+echo "--- Pre-building sentence embeddings ---"
+python -c "from backend.recommender import Recommender; Recommender()"
 
-if [ ! -f "data/embeddings.npy" ]; then
-    echo "Generating embeddings..."
-    python backend/prepare_embeddings.py
-fi
-
-echo "Build complete!"
-
+echo "--- Build finished ---"
