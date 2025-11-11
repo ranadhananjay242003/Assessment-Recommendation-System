@@ -37,24 +37,17 @@ app = FastAPI(
     lifespan=lifespan
 )
 
-# --- START OF THE CORS FIX ---
-# This is the "guest list" of allowed frontends.
-# We are telling our backend that it's okay to accept calls from your Vercel app.
-origins = [
-    "https://jj-ntb81j33y-dhananjay-ranas-projects-13d585b8.vercel.app",
-    "http://localhost:3000",
-    "http://127.0.0.1:5500" 
-]
+# --- START OF THE RELIABLE CORS FIX (TRUST ALL) ---
+from fastapi.middleware.cors import CORSMiddleware
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=origins, # Use our specific guest list
+    allow_origins=["*"],  # This allows ANY origin
     allow_credentials=True,
-    allow_methods=["GET", "POST"], # Only allow the methods you need
-    allow_headers=["*"],
+    allow_methods=["*"],  # This allows ANY method (GET, POST, etc.)
+    allow_headers=["*"],  # This allows ANY header
 )
-# --- END OF THE CORS FIX ---
-
+# --- END OF THE RELIABLE CORS FIX ---
 
 class RecommendRequest(BaseModel):
     query: str = Field(..., description="User's free-text query or JD")
