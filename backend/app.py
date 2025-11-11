@@ -40,12 +40,18 @@ app = FastAPI(
 # --- START OF THE RELIABLE CORS FIX (TRUST ALL) ---
 from fastapi.middleware.cors import CORSMiddleware
 
+origins = [
+    "https://assessment-recommendation-system-six.vercel.app/", # <-- PASTE YOUR NEW VERCEL URL HERE
+    "http://localhost:3000",
+    "http://127.0.0.1:5500" 
+]
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # This allows ANY origin
+    allow_origins=origins, # Use our specific guest list
     allow_credentials=True,
-    allow_methods=["*"],  # This allows ANY method (GET, POST, etc.)
-    allow_headers=["*"],  # This allows ANY header
+    allow_methods=["GET", "POST"],
+    allow_headers=["*"],
 )
 # --- END OF THE RELIABLE CORS FIX ---
 
