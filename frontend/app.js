@@ -20,7 +20,7 @@ searchButton.addEventListener("click", async () => {
     }
     
     // Show a "loading..." message
-    resultsContainer.innerHTML = "<p>Searching for recommendations...</p>";
+    resultsContainer.innerHTML = `<p>Searching for recommendations...</p>`;
 
     try {
         // 2. Use the 'userQuery' variable in the body of your request.
@@ -43,18 +43,18 @@ searchButton.addEventListener("click", async () => {
 
     } catch (error) {
         console.error("Failed to fetch:", error);
-        resultsContainer.innerHTML = <p style="color: red;">Error: ${error.message}</p>;
+        resultsContainer.innerHTML = `<p style="color: red;">Error: ${error.message}</p>`;
     }
 });
 
 // A function to render the results on the page
 function displayResults(assessments) {
     if (!assessments || assessments.length === 0) {
-        resultsContainer.innerHTML = "<p>No recommendations found for your query.</p>";
+        resultsContainer.innerHTML = `<p>No recommendations found for your query.</p>`;
         return;
     }
 
-    resultsContainer.innerHTML = ""; // Clear the "loading..." message
+    resultsContainer.innerHTML = ``; // Clear the "loading..." message
 
     assessments.forEach(assessment => {
         const assessmentCard = document.createElement('div');
