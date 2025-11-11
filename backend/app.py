@@ -40,16 +40,16 @@ app = FastAPI(
 from fastapi.middleware.cors import CORSMiddleware
 
 origins = [
-    "https://assessment-recommendation-system-six.vercel.app", 
+    "https://assessment-recommendation-system-qud6hb57v.vercel.app",  # ✅ correct frontend origin (no slash)
+    "http://localhost:3000",
     "http://127.0.0.1:5500"
-    "http://localhost:3000" 
 ]
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"], 
+    allow_origins=origins,
     allow_credentials=True,
-    allow_methods=["*"],
+    allow_methods=["GET", "POST", "OPTIONS"],
     allow_headers=["*"],
 )
 
